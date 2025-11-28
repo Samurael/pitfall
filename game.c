@@ -4,6 +4,7 @@
 #include <allegro5/allegro_ttf.h>
 
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/keycodes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -70,10 +71,11 @@ void game_init(Game *g) {
   g->pausado = 0;
   g->scroll_x = 0;
 
-  g->keys.left = ALLEGRO_KEY_LEFT;
-  g->keys.right = ALLEGRO_KEY_RIGHT;
-  g->keys.jump = ALLEGRO_KEY_SPACE;
-  g->keys.crouch = ALLEGRO_KEY_DOWN;
+  g->keys.left = ALLEGRO_KEY_A;
+  g->keys.right = ALLEGRO_KEY_D;
+  g->keys.jump = ALLEGRO_KEY_W;
+  g->keys.crouch = ALLEGRO_KEY_S;
+
   g->keys.pause = ALLEGRO_KEY_P;
 
   g->dificuldade = 1;

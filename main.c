@@ -34,7 +34,7 @@ int main() {
   }
 
   ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
-  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60);
+  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);
 
   al_register_event_source(queue, al_get_keyboard_event_source());
   al_register_event_source(queue, al_get_display_event_source(display));

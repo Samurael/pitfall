@@ -15,7 +15,7 @@ void player_init(Player *p) {
   p->vx = 0;
   p->vy = 0;
   p->w = 32;
-  p->h = 48;
+  p->h = 32;
   p->vida = 100;
   p->na_chao = 1;
   p->crouch = 0;
