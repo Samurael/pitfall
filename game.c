@@ -28,15 +28,15 @@ static void spawn_for_phase(int phase) {
     obst[2] = (Obstacle){1000, 260, 40, 40, 0, 1, 0};
     obst[3] = (Obstacle){1300, 300, 100, 20, -30, 1, 1};
     obst[4] = (Obstacle){1600, 260, 40, 40, 0, 1, 0};
-    obst[5] = (Obstacle){2000, 240, 20, 20, 0, 1, 3}; // cipó
+    obst[5] = (Obstacle){2000, 240, 20, 20, 0, 1, 3};
     num_obs = 6;
   } else {
     obst[0] = (Obstacle){300, 300, 60, 20, 0, 1, 0};
     obst[1] = (Obstacle){600, 260, 40, 40, 0, 1, 0};
     obst[2] = (Obstacle){900, 300, 80, 20, 0, 1, 0};
     obst[3] = (Obstacle){1200, 240, 40, 40, 0, 1, 0};
-    obst[4] = (Obstacle){1500, 300, 100, 20, 0, 1, 2}; // cai
-    obst[5] = (Obstacle){1800, 240, 20, 20, 0, 1, 3};  // cipó
+    obst[4] = (Obstacle){1500, 300, 100, 20, 0, 1, 2};
+    obst[5] = (Obstacle){1800, 240, 20, 20, 0, 1, 3};
     num_obs = 6;
   }
 }
@@ -55,11 +55,15 @@ void game_init(Game *g) {
   g->has_double_jump_item = 0;
   g->font = NULL;
 
+  g->state = STATE_MENU;
+  g->win = 0;
+
   const char *paths[NUM_LAYERS] = {
       "assets/backgrounds/layer1.png", "assets/backgrounds/layer2.png",
       "assets/backgrounds/layer3.png", "assets/backgrounds/layer4.png",
       "assets/backgrounds/layer5.png"};
   float speeds[NUM_LAYERS] = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+
   for (int i = 0; i < NUM_LAYERS; i++) {
     g->bg_layers[i] = al_load_bitmap(paths[i]);
     if (!g->bg_layers[i]) {
@@ -82,8 +86,9 @@ static int aabb(float ax, float ay, float aw, float ah, float bx, float by,
 }
 
 void game_update(Game *g, float dt) {
-  if (g->pausado)
+  if (g->state != STATE_PLAYING || g->pausado)
     return;
+
   float diff_mul = 1.0f + g->dificuldade * 0.25f;
 
   for (int i = 0; i < num_obs; i++) {
@@ -144,8 +149,11 @@ void game_update(Game *g, float dt) {
           o->type = 99;
       } else {
         g->player.vida -= 20 * dt;
-        if (g->player.vida < 0)
+        if (g->player.vida <= 0) {
           g->player.vida = 0;
+          g->state = STATE_GAMEOVER;
+          g->win = 0;
+        }
       }
     }
   }
@@ -158,28 +166,61 @@ void game_update(Game *g, float dt) {
     }
   }
 
-  if (g->scroll_x > 2600) {
-    if (g->fase == 1) {
-      g->fase = 2;
-      spawn_for_phase(g->fase);
-      g->scroll_x = 0;
-      g->player.x = 100;
-      g->player.y = 280;
-      g->player.vx = 0;
-      g->player.vy = 0;
-    }
+  if (g->scroll_x > 2600 && g->fase == 2) {
+    g->state = STATE_GAMEOVER;
+    g->win = 1;
+  } else if (g->scroll_x > 2600) {
+    g->fase = 2;
+    spawn_for_phase(g->fase);
+    g->scroll_x = 0;
+    g->player.x = 100;
+    g->player.y = 280;
+    g->player.vx = 0;
+    g->player.vy = 0;
   }
 }
 
 void game_draw(Game *g) {
-  int screen_w = 800, screen_h = 600; // ajustar caso a tela seja maior
+  int screen_w = 800, screen_h = 600;
+
+  if (g->state == STATE_MENU) {
+    al_clear_to_color(al_map_rgb(50, 50, 100));
+    al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                 al_map_rgb(255, 255, 0), screen_w / 2, screen_h / 3,
+                 ALLEGRO_ALIGN_CENTER, "PITFALL");
+    al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                 al_map_rgb(255, 255, 255), screen_w / 2, screen_h / 2,
+                 ALLEGRO_ALIGN_CENTER, "Pressione ENTER para iniciar");
+    al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                 al_map_rgb(255, 255, 255), screen_w / 2, screen_h / 1.8,
+                 ALLEGRO_ALIGN_CENTER, "Pressione ESC para sair");
+    return;
+  }
+
+  if (g->state == STATE_GAMEOVER) {
+    al_clear_to_color(al_map_rgb(0, 0, 0));
+    if (g->win) {
+      al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                   al_map_rgb(0, 255, 0), screen_w / 2, screen_h / 3,
+                   ALLEGRO_ALIGN_CENTER, "VOCÊ VENCEU!");
+    } else {
+      al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                   al_map_rgb(255, 0, 0), screen_w / 2, screen_h / 3,
+                   ALLEGRO_ALIGN_CENTER, "GAME OVER!");
+    }
+    al_draw_text(g->font ? g->font : al_create_builtin_font(),
+                 al_map_rgb(255, 255, 255), screen_w / 2, screen_h / 2,
+                 ALLEGRO_ALIGN_CENTER, "Pressione ENTER para voltar ao menu");
+    return;
+  }
+
+  // ===== Fundo parallax =====
   for (int i = 0; i < NUM_LAYERS; i++) {
     float offset_x = g->scroll_x * g->bg_speeds[i];
     ALLEGRO_BITMAP *bmp = g->bg_layers[i];
     int w = al_get_bitmap_width(bmp);
     int h = al_get_bitmap_height(bmp);
 
-    // Escala vertical proporcional
     float scale_y = (float)screen_h / h;
     float scaled_w = w * scale_y;
     int repeat = ceil(screen_w / scaled_w) + 2;
@@ -219,19 +260,39 @@ void game_draw(Game *g) {
   char buf[128];
   sprintf(buf, "Vida: %d  Stamina: %.0f  Fase: %d", g->player.vida,
           g->player.stamina, g->fase);
-  if (g->font)
-    al_draw_text(g->font, al_map_rgb(255, 255, 255), 10, 10, 0, buf);
-  else
-    al_draw_text(al_create_builtin_font(), al_map_rgb(255, 255, 255), 10, 10, 0,
-                 buf);
+  al_draw_text(g->font ? g->font : al_create_builtin_font(),
+               al_map_rgb(255, 255, 255), 10, 10, 0, buf);
 
-  if (g->pausado)
+  if (g->pausado) {
     al_draw_text(g->font ? g->font : al_create_builtin_font(),
                  al_map_rgb(255, 255, 0), screen_w / 2, screen_h / 3,
                  ALLEGRO_ALIGN_CENTER, "PAUSADO");
+  }
 }
 
 void game_handle_key_down(Game *g, int keycode) {
+  if (g->state == STATE_MENU) {
+    if (keycode == ALLEGRO_KEY_ENTER) {
+      g->state = STATE_PLAYING;
+    }
+    if (keycode == ALLEGRO_KEY_ESCAPE) {
+      exit(0);
+    }
+    return;
+  }
+
+  if (g->state == STATE_GAMEOVER) {
+    if (keycode == ALLEGRO_KEY_ENTER) {
+      g->state = STATE_MENU;
+      g->fase = 1;
+      g->scroll_x = 0;
+      player_init(&g->player);
+      spawn_for_phase(g->fase);
+    }
+    return;
+  }
+
+  // Jogando
   if (keycode == g->keys.left)
     player_move_left(&g->player);
   if (keycode == g->keys.right)
