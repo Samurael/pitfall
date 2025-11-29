@@ -3,6 +3,8 @@
 
 #include "player.h"
 #include <allegro5/allegro.h>
+#include <allegro5/allegro_acodec.h>
+#include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_font.h>
 
 #define NUM_LAYERS 5
@@ -26,7 +28,13 @@ typedef struct {
   ALLEGRO_FONT *font;
   ALLEGRO_BITMAP *platform_tileset;
 
-  // Novos campos
+  // Novos campos para música
+  ALLEGRO_SAMPLE *music_menu;
+  ALLEGRO_SAMPLE *music_game;
+  ALLEGRO_SAMPLE_ID music_id;
+  float volume;
+
+  // Estado do jogo
   GameState state;
   int win; // 1 = vitória, 0 = derrota
 } Game;

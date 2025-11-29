@@ -1,4 +1,8 @@
 #include "game.h"
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_acodec.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
 #include <math.h>
 #include <stdio.h>
@@ -15,6 +19,7 @@ typedef struct {
 static Obstacle obst[MAX_OBS];
 static int num_obs = 0;
 
+// =================== Obstáculos ===================
 static void clear_obstacles() {
   num_obs = 0;
   memset(obst, 0, sizeof(obst));
@@ -41,6 +46,22 @@ static void spawn_for_phase(int phase) {
   }
 }
 
+// =================== Música ===================
+static void play_music(ALLEGRO_SAMPLE *music, Game *g) {
+  if (music) {
+    al_stop_sample(&g->music_id);
+    al_play_sample(music, g->volume, 0.0, 1.0, ALLEGRO_PLAYMODE_LOOP,
+                   &g->music_id);
+  }
+}
+
+// =================== AABB ===================
+static int aabb(float ax, float ay, float aw, float ah, float bx, float by,
+                float bw, float bh) {
+  return !(ax + aw < bx || ax > bx + bw || ay + ah < by || ay > by + bh);
+}
+
+// =================== Inicialização ===================
 void game_init(Game *g) {
   player_init(&g->player);
   g->fase = 1;
@@ -54,10 +75,19 @@ void game_init(Game *g) {
   g->dificuldade = 1;
   g->has_double_jump_item = 0;
   g->font = NULL;
-
   g->state = STATE_MENU;
   g->win = 0;
 
+  // Inicializa áudio
+  g->volume = 0.5f;
+  al_install_audio();
+  al_init_acodec_addon();
+  al_reserve_samples(2);
+  g->music_menu = al_load_sample("assets/sounds/menu.ogg");
+  g->music_game = al_load_sample("assets/sounds/game.ogg");
+  play_music(g->music_menu, g);
+
+  // Carrega backgrounds
   const char *paths[NUM_LAYERS] = {
       "assets/backgrounds/layer1.png", "assets/backgrounds/layer2.png",
       "assets/backgrounds/layer3.png", "assets/backgrounds/layer4.png",
@@ -80,11 +110,7 @@ void game_init(Game *g) {
   spawn_for_phase(g->fase);
 }
 
-static int aabb(float ax, float ay, float aw, float ah, float bx, float by,
-                float bw, float bh) {
-  return !(ax + aw < bx || ax > bx + bw || ay + ah < by || ay > by + bh);
-}
-
+// =================== Update ===================
 void game_update(Game *g, float dt) {
   if (g->state != STATE_PLAYING || g->pausado)
     return;
@@ -110,8 +136,7 @@ void game_update(Game *g, float dt) {
     g->player.x = center;
   }
 
-  int on_obstacle = 0; // Verifica se o player está sobre algum obstáculo
-
+  int on_obstacle = 0;
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
     float ox = o->x - g->scroll_x;
@@ -140,7 +165,6 @@ void game_update(Game *g, float dt) {
       continue;
     }
 
-    // Colisão AABB
     if (aabb(g->player.x, g->player.y, g->player.w, g->player.h, ox, oy, o->w,
              o->h)) {
       if (g->player.vy >= 0 && g->player.y + g->player.h <= oy + 10) {
@@ -162,10 +186,8 @@ void game_update(Game *g, float dt) {
     }
   }
 
-  // Se não estiver sobre obstáculo nem chão, cair normalmente
-  if (!on_obstacle && g->player.y + g->player.h < 320) {
+  if (!on_obstacle && g->player.y + g->player.h < 320)
     g->player.na_chao = 0;
-  }
 
   for (int i = 0; i < num_obs; i++) {
     if (obst[i].type == 99) {
@@ -186,9 +208,11 @@ void game_update(Game *g, float dt) {
     g->player.y = 280;
     g->player.vx = 0;
     g->player.vy = 0;
+    play_music(g->music_game, g);
   }
 }
 
+// =================== Draw ===================
 void game_draw(Game *g) {
   int screen_w = 800, screen_h = 600;
 
@@ -223,17 +247,15 @@ void game_draw(Game *g) {
     return;
   }
 
-  // ===== Fundo parallax =====
+  // Fundo parallax
   for (int i = 0; i < NUM_LAYERS; i++) {
     float offset_x = g->scroll_x * g->bg_speeds[i];
     ALLEGRO_BITMAP *bmp = g->bg_layers[i];
     int w = al_get_bitmap_width(bmp);
     int h = al_get_bitmap_height(bmp);
-
     float scale_y = (float)screen_h / h;
     float scaled_w = w * scale_y;
     int repeat = ceil(screen_w / scaled_w) + 2;
-
     for (int t = -1; t < repeat; t++) {
       al_draw_scaled_bitmap(bmp, 0, 0, w, h,
                             t * scaled_w - fmod(offset_x, scaled_w), 0,
@@ -243,13 +265,13 @@ void game_draw(Game *g) {
 
   al_draw_filled_rectangle(0, 320, screen_w, screen_h, al_map_rgb(34, 139, 34));
 
+  // Obstáculos
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
     if (!o->active)
       continue;
     float ox = o->x - g->scroll_x;
     float oy = o->y;
-
     if (o->type == 3) {
       al_draw_filled_circle(ox + o->w / 2, oy + o->h / 2, 6,
                             al_map_rgb(80, 40, 10));
@@ -266,18 +288,13 @@ void game_draw(Game *g) {
 
   player_draw(&g->player, g->scroll_x);
 
-  // ===== Barras de Vida e Stamina =====
-  int bar_w = 200, bar_h = 20;
-  int x_offset = 10, y_offset = 10;
-
-  // Vida (vermelha)
+  // Barras
+  int bar_w = 200, bar_h = 20, x_offset = 10, y_offset = 10;
   float vida_perc = g->player.vida / 100.0f;
   al_draw_filled_rectangle(x_offset, y_offset, x_offset + bar_w * vida_perc,
                            y_offset + bar_h, al_map_rgb(200, 0, 0));
   al_draw_rectangle(x_offset, y_offset, x_offset + bar_w, y_offset + bar_h,
                     al_map_rgb(255, 255, 255), 2);
-
-  // Stamina (verde)
   float stamina_perc = g->player.stamina / 100.0f;
   al_draw_filled_rectangle(x_offset, y_offset + 25,
                            x_offset + bar_w * stamina_perc,
@@ -292,14 +309,15 @@ void game_draw(Game *g) {
   }
 }
 
+// =================== Inputs ===================
 void game_handle_key_down(Game *g, int keycode) {
   if (g->state == STATE_MENU) {
     if (keycode == ALLEGRO_KEY_ENTER) {
       g->state = STATE_PLAYING;
+      play_music(g->music_game, g);
     }
-    if (keycode == ALLEGRO_KEY_ESCAPE) {
+    if (keycode == ALLEGRO_KEY_ESCAPE)
       exit(0);
-    }
     return;
   }
 
@@ -310,6 +328,7 @@ void game_handle_key_down(Game *g, int keycode) {
       g->scroll_x = 0;
       player_init(&g->player);
       spawn_for_phase(g->fase);
+      play_music(g->music_menu, g);
     }
     return;
   }
