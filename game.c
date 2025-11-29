@@ -55,7 +55,6 @@ void game_init(Game *g) {
   g->has_double_jump_item = 0;
   g->font = NULL;
 
-  // Inicializar parallax
   const char *paths[NUM_LAYERS] = {
       "assets/backgrounds/layer1.png", "assets/backgrounds/layer2.png",
       "assets/backgrounds/layer3.png", "assets/backgrounds/layer4.png",
@@ -87,11 +86,10 @@ void game_update(Game *g, float dt) {
     return;
   float diff_mul = 1.0f + g->dificuldade * 0.25f;
 
-  // Atualizar obstáculos
   for (int i = 0; i < num_obs; i++) {
     if (!obst[i].active)
       obst[i].active = 1;
-    if (obst[i].type == 1) { // móvel horizontal
+    if (obst[i].type == 1) {
       obst[i].x += obst[i].vx * dt * diff_mul;
       if (obst[i].x < 100 || obst[i].x > 1700)
         obst[i].vx *= -1;
@@ -100,7 +98,6 @@ void game_update(Game *g, float dt) {
 
   player_update(&g->player, dt);
 
-  // Scroll
   float center = 300.0f;
   if (g->player.x > center) {
     float diff = g->player.x - center;
@@ -108,7 +105,6 @@ void game_update(Game *g, float dt) {
     g->player.x = center;
   }
 
-  // Colisões
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
     float ox = o->x - g->scroll_x;
@@ -118,7 +114,6 @@ void game_update(Game *g, float dt) {
     if (ox + o->w < -50 || ox > 850)
       continue;
 
-    // CIPÓ
     if (o->type == 3) {
       float world_px = g->player.x + g->scroll_x + g->player.w / 2;
       float world_py = g->player.y + g->player.h / 2;
@@ -138,7 +133,6 @@ void game_update(Game *g, float dt) {
       continue;
     }
 
-    // colisão normal
     if (aabb(g->player.x, g->player.y, g->player.w, g->player.h, ox, oy, o->w,
              o->h)) {
       if (g->player.vy >= 0 && g->player.y + g->player.h <= oy + 10) {
@@ -147,7 +141,7 @@ void game_update(Game *g, float dt) {
         g->player.na_chao = 1;
         g->player.pulos_feitos = 0;
         if (o->type == 2)
-          o->type = 99; // cai
+          o->type = 99;
       } else {
         g->player.vida -= 20 * dt;
         if (g->player.vida < 0)
@@ -156,7 +150,6 @@ void game_update(Game *g, float dt) {
     }
   }
 
-  // plataformas que caem
   for (int i = 0; i < num_obs; i++) {
     if (obst[i].type == 99) {
       obst[i].y += 400.0f * dt;
@@ -165,7 +158,6 @@ void game_update(Game *g, float dt) {
     }
   }
 
-  // troca de fase
   if (g->scroll_x > 2600) {
     if (g->fase == 1) {
       g->fase = 2;
@@ -180,30 +172,27 @@ void game_update(Game *g, float dt) {
 }
 
 void game_draw(Game *g) {
-  // ===== Fundo parallax esticado proporcional =====
+  int screen_w = 800, screen_h = 600; // ajustar caso a tela seja maior
   for (int i = 0; i < NUM_LAYERS; i++) {
     float offset_x = g->scroll_x * g->bg_speeds[i];
     ALLEGRO_BITMAP *bmp = g->bg_layers[i];
     int w = al_get_bitmap_width(bmp);
     int h = al_get_bitmap_height(bmp);
 
-    // Ajuste proporcional da altura
-    float scale_y = 600.0f / h; // altura da tela / altura do bitmap
-
-    // Largura proporcional à altura ajustada para não distorcer
+    // Escala vertical proporcional
+    float scale_y = (float)screen_h / h;
     float scaled_w = w * scale_y;
+    int repeat = ceil(screen_w / scaled_w) + 2;
 
-    // Desenha bitmap esticado horizontalmente e verticalmente com scroll
-    al_draw_scaled_bitmap(bmp, 0, 0, w, h, -offset_x, 0, // posição na tela
-                          800 + scaled_w,
-                          600, // largura esticada + scroll, altura ajustada
-                          0);
+    for (int t = -1; t < repeat; t++) {
+      al_draw_scaled_bitmap(bmp, 0, 0, w, h,
+                            t * scaled_w - fmod(offset_x, scaled_w), 0,
+                            scaled_w, screen_h, 0);
+    }
   }
 
-  // ===== Chão =====
-  al_draw_filled_rectangle(0, 320, 800, 600, al_map_rgb(34, 139, 34));
+  al_draw_filled_rectangle(0, 320, screen_w, screen_h, al_map_rgb(34, 139, 34));
 
-  // ===== Obstáculos =====
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
     if (!o->active)
@@ -225,10 +214,8 @@ void game_draw(Game *g) {
     }
   }
 
-  // ===== Player =====
   player_draw(&g->player, g->scroll_x);
 
-  // ===== HUD =====
   char buf[128];
   sprintf(buf, "Vida: %d  Stamina: %.0f  Fase: %d", g->player.vida,
           g->player.stamina, g->fase);
@@ -240,8 +227,8 @@ void game_draw(Game *g) {
 
   if (g->pausado)
     al_draw_text(g->font ? g->font : al_create_builtin_font(),
-                 al_map_rgb(255, 255, 0), 400, 180, ALLEGRO_ALIGN_CENTER,
-                 "PAUSADO");
+                 al_map_rgb(255, 255, 0), screen_w / 2, screen_h / 3,
+                 ALLEGRO_ALIGN_CENTER, "PAUSADO");
 }
 
 void game_handle_key_down(Game *g, int keycode) {
