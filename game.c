@@ -110,7 +110,7 @@ void game_update(Game *g, float dt) {
     g->player.x = center;
   }
 
-  int on_obstacle = 0; // Novo: verificar se player está sobre algum obstáculo
+  int on_obstacle = 0; // Verifica se o player está sobre algum obstáculo
 
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
@@ -266,11 +266,24 @@ void game_draw(Game *g) {
 
   player_draw(&g->player, g->scroll_x);
 
-  char buf[128];
-  sprintf(buf, "Vida: %d  Stamina: %.0f  Fase: %d", g->player.vida,
-          g->player.stamina, g->fase);
-  al_draw_text(g->font ? g->font : al_create_builtin_font(),
-               al_map_rgb(255, 255, 255), 10, 10, 0, buf);
+  // ===== Barras de Vida e Stamina =====
+  int bar_w = 200, bar_h = 20;
+  int x_offset = 10, y_offset = 10;
+
+  // Vida (vermelha)
+  float vida_perc = g->player.vida / 100.0f;
+  al_draw_filled_rectangle(x_offset, y_offset, x_offset + bar_w * vida_perc,
+                           y_offset + bar_h, al_map_rgb(200, 0, 0));
+  al_draw_rectangle(x_offset, y_offset, x_offset + bar_w, y_offset + bar_h,
+                    al_map_rgb(255, 255, 255), 2);
+
+  // Stamina (verde)
+  float stamina_perc = g->player.stamina / 100.0f;
+  al_draw_filled_rectangle(x_offset, y_offset + 25,
+                           x_offset + bar_w * stamina_perc,
+                           y_offset + 25 + bar_h, al_map_rgb(0, 200, 0));
+  al_draw_rectangle(x_offset, y_offset + 25, x_offset + bar_w,
+                    y_offset + 25 + bar_h, al_map_rgb(255, 255, 255), 2);
 
   if (g->pausado) {
     al_draw_text(g->font ? g->font : al_create_builtin_font(),
