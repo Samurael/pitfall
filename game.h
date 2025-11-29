@@ -1,31 +1,31 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "player.h"
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
-#include <allegro5/allegro_ttf.h>
+#include "player.h"
 
-typedef struct {
-  int left, right, jump, crouch, pause;
-} Keymap;
-
-typedef struct {
-  Player player;
-  int fase;
-  int pausado;
-  float scroll_x;
-  Keymap keys;
-  int dificuldade;
-  int has_double_jump_item;
-  ALLEGRO_FONT *font;
-
-// Parallax
 #define NUM_LAYERS 5
-  ALLEGRO_BITMAP *bg_layers[NUM_LAYERS];
-  float bg_speeds[NUM_LAYERS];
+
+typedef struct {
+    int left, right, jump, crouch, pause;
+} GameKeys;
+
+typedef struct {
+    Player player;
+    int fase;
+    float scroll_x;
+    int pausado;
+    ALLEGRO_BITMAP *bg_layers[NUM_LAYERS];  // Fundo parallax
+    float bg_speeds[NUM_LAYERS];
+    GameKeys keys;
+    int dificuldade;
+    int has_double_jump_item;
+    ALLEGRO_FONT *font;
+    ALLEGRO_BITMAP *platform_tileset;       // Tileset das plataformas (Jungle Pack)
 } Game;
 
+// Funções principais do jogo
 void game_init(Game *g);
 void game_update(Game *g, float dt);
 void game_draw(Game *g);

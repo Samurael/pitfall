@@ -180,18 +180,28 @@ void game_update(Game *g, float dt) {
 }
 
 void game_draw(Game *g) {
-  // ===== Fundo parallax =====
+  // ===== Fundo parallax esticado proporcional =====
   for (int i = 0; i < NUM_LAYERS; i++) {
-    float offset = g->scroll_x * g->bg_speeds[i];
+    float offset_x = g->scroll_x * g->bg_speeds[i];
     ALLEGRO_BITMAP *bmp = g->bg_layers[i];
     int w = al_get_bitmap_width(bmp);
     int h = al_get_bitmap_height(bmp);
-    for (int x = -((int)offset % w); x < 800; x += w)
-      al_draw_bitmap(bmp, x, 0, 0);
+
+    // Ajuste proporcional da altura
+    float scale_y = 600.0f / h; // altura da tela / altura do bitmap
+
+    // Largura proporcional à altura ajustada para não distorcer
+    float scaled_w = w * scale_y;
+
+    // Desenha bitmap esticado horizontalmente e verticalmente com scroll
+    al_draw_scaled_bitmap(bmp, 0, 0, w, h, -offset_x, 0, // posição na tela
+                          800 + scaled_w,
+                          600, // largura esticada + scroll, altura ajustada
+                          0);
   }
 
   // ===== Chão =====
-  al_draw_filled_rectangle(0, 320, 800, 400, al_map_rgb(34, 139, 34));
+  al_draw_filled_rectangle(0, 320, 800, 600, al_map_rgb(34, 139, 34));
 
   // ===== Obstáculos =====
   for (int i = 0; i < num_obs; i++) {
