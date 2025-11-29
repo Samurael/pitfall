@@ -110,6 +110,8 @@ void game_update(Game *g, float dt) {
     g->player.x = center;
   }
 
+  int on_obstacle = 0; // Novo: verificar se player está sobre algum obstáculo
+
   for (int i = 0; i < num_obs; i++) {
     Obstacle *o = &obst[i];
     float ox = o->x - g->scroll_x;
@@ -119,7 +121,7 @@ void game_update(Game *g, float dt) {
     if (ox + o->w < -50 || ox > 850)
       continue;
 
-    if (o->type == 3) {
+    if (o->type == 3) { // Cipó
       float world_px = g->player.x + g->scroll_x + g->player.w / 2;
       float world_py = g->player.y + g->player.h / 2;
       float dx = world_px - (o->x + o->w / 2);
@@ -138,6 +140,7 @@ void game_update(Game *g, float dt) {
       continue;
     }
 
+    // Colisão AABB
     if (aabb(g->player.x, g->player.y, g->player.w, g->player.h, ox, oy, o->w,
              o->h)) {
       if (g->player.vy >= 0 && g->player.y + g->player.h <= oy + 10) {
@@ -145,6 +148,7 @@ void game_update(Game *g, float dt) {
         g->player.vy = 0;
         g->player.na_chao = 1;
         g->player.pulos_feitos = 0;
+        on_obstacle = 1;
         if (o->type == 2)
           o->type = 99;
       } else {
@@ -156,6 +160,11 @@ void game_update(Game *g, float dt) {
         }
       }
     }
+  }
+
+  // Se não estiver sobre obstáculo nem chão, cair normalmente
+  if (!on_obstacle && g->player.y + g->player.h < 320) {
+    g->player.na_chao = 0;
   }
 
   for (int i = 0; i < num_obs; i++) {
@@ -292,7 +301,6 @@ void game_handle_key_down(Game *g, int keycode) {
     return;
   }
 
-  // Jogando
   if (keycode == g->keys.left)
     player_move_left(&g->player);
   if (keycode == g->keys.right)
