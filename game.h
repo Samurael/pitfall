@@ -2,12 +2,13 @@
 #define GAME_H
 
 #include "player.h"
-
+#include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
 
-#include "util.h"
-#include <allegro5/allegro.h>
+typedef struct {
+  int left, right, jump, crouch, pause;
+} Keymap;
 
 typedef struct {
   Player player;
@@ -18,6 +19,11 @@ typedef struct {
   int dificuldade;
   int has_double_jump_item;
   ALLEGRO_FONT *font;
+
+// Parallax
+#define NUM_LAYERS 5
+  ALLEGRO_BITMAP *bg_layers[NUM_LAYERS];
+  float bg_speeds[NUM_LAYERS];
 } Game;
 
 void game_init(Game *g);
