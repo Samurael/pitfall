@@ -23,6 +23,7 @@ typedef struct {
   int dupla_pulo;
   int pulos_feitos;
   float stamina;
+  float stamina_max;
   PlayerState state;
 
   // Sprites

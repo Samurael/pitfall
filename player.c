@@ -38,16 +38,12 @@ void player_init(Player *p) {
   // Carregar sprites
   safe_load(&p->spr_idle, "sprites/idle.png");
   p->idle_frames = 12;
-
   safe_load(&p->spr_run, "sprites/run.png");
   p->run_frames = 8;
-
   safe_load(&p->spr_jump_start, "sprites/jump_start.png");
   safe_load(&p->spr_midair, "sprites/midair.png");
   p->midair_frames = 2;
-
   safe_load(&p->spr_jump_land, "sprites/jump_land.png");
-
   safe_load(&p->spr_crouch, "sprites/crouch.png");
   safe_load(&p->spr_vine, "sprites/vine.png");
 }
@@ -63,7 +59,6 @@ void update_animation(Player *p, float dt) {
   if (p->anim_time >= frame_dur) {
     p->anim_time -= frame_dur;
     p->anim_frame++;
-
     switch (p->state) {
     case P_RUN:
       p->anim_frame %= p->run_frames;
@@ -82,6 +77,11 @@ void update_animation(Player *p, float dt) {
 }
 
 void player_update(Player *p, float dt) {
+  float speed_mult =
+      (p->stamina > 0) ? 1.0f : 0.5f; // Metade da velocidade se sem stamina
+  float jump_mult =
+      (p->stamina > 0) ? 1.0f : 0.7f; // Salto mais baixo se sem stamina
+
   if (p->on_vine) {
     float g = 1200.0f, base_len = 120.0f;
     float torque = -(g / base_len) * sinf(p->vine_angle);
@@ -100,7 +100,7 @@ void player_update(Player *p, float dt) {
 
   if (!p->na_chao)
     p->vy += 1200.0f * dt;
-  p->x += p->vx * dt;
+  p->x += p->vx * dt * speed_mult;
   p->y += p->vy * dt;
 
   if (p->y >= 320 - p->h) {
@@ -112,10 +112,7 @@ void player_update(Player *p, float dt) {
 
   // Definir estado
   if (!p->na_chao) {
-    if (p->vy < 0)
-      p->state = P_JUMP_START;
-    else
-      p->state = P_MIDAIR;
+    p->state = (p->vy < 0) ? P_JUMP_START : P_MIDAIR;
   } else if (p->pulos_feitos > 0) {
     p->state = P_JUMP_LAND;
   } else if (p->crouch) {
@@ -126,6 +123,7 @@ void player_update(Player *p, float dt) {
     p->state = P_IDLE;
   }
 
+  // Stamina
   p->stamina += (p->vx == 0 ? 15.0f : -25.0f) * dt;
   if (p->stamina < 0)
     p->stamina = 0;
@@ -170,7 +168,6 @@ void player_draw(Player *p, float scroll_x) {
     int fw = al_get_bitmap_width(b) / frames;
     int fh = al_get_bitmap_height(b);
     int flags = p->facing_right ? 0 : ALLEGRO_FLIP_HORIZONTAL;
-
     al_draw_bitmap_region(b, p->anim_frame * fw, 0, fw, fh, p->x, p->y, flags);
   } else {
     al_draw_filled_rectangle(p->x, p->y, p->x + p->w, p->y + p->h,
@@ -179,28 +176,32 @@ void player_draw(Player *p, float scroll_x) {
 }
 
 void player_move_left(Player *p) {
-  if (p->stamina > 0) {
+  if (p->stamina > 0)
     p->vx = -200;
-    p->facing_right = 0;
-  }
+  else
+    p->vx = -100; // metade da velocidade se sem stamina
+  p->facing_right = 0;
 }
 
 void player_move_right(Player *p) {
-  if (p->stamina > 0) {
+  if (p->stamina > 0)
     p->vx = 200;
-    p->facing_right = 1;
-  }
+  else
+    p->vx = 100; // metade da velocidade se sem stamina
+  p->facing_right = 1;
 }
 
 void player_stop(Player *p) { p->vx = 0; }
 
 void player_jump(Player *p) {
+  float jump_vel =
+      (p->stamina > 0) ? -420.0f : -294.0f; // 70% do salto se sem stamina
   if (p->na_chao) {
-    p->vy = -420;
+    p->vy = jump_vel;
     p->na_chao = 0;
     p->pulos_feitos = 1;
   } else if (p->dupla_pulo && p->pulos_feitos == 1) {
-    p->vy = -380;
+    p->vy = jump_vel * 0.9f; // salto duplo um pouco mais fraco
     p->pulos_feitos = 2;
   }
 }
